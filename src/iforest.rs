@@ -13,15 +13,24 @@ impl<A: Aggregate> IForestIndex<A> {
 
     fn push(&mut self, block: &TraceBlock) {
         self.vals.push(A::from_block(block));
+
         // We want to index the first level every 2 nodes, 2nd level every 4 nodes...
         // This happens to correspond to the number of trailing ones in the index
         let levels_to_index = (!self.indexed_count).trailing_zeros();
+
+        // Complete unfinished aggregation nodes which are now ready
+        let len = self.vals.len();
+        let mut cur = len-1; // The leaf we just pushed
         for level in 0..levels_to_index {
-            let len = self.vals.len();
-            // Left child is back a level-sized subtree, which are powers of two
-            let combined = A::combine(&self.vals[len-(2 << level)], &self.vals[len-1]);
-            self.vals.push(combined);
+            let prev_higher_level = cur-(1 << level); // nodes at a level reach 2^level
+            let combined = A::combine(&self.vals[prev_higher_level], &self.vals[cur]);
+            self.vals[prev_higher_level] = combined;
+            cur = prev_higher_level;
         }
+
+        // Push new aggregation node going back one level further than we aggregated
+        self.vals.push(self.vals[len-(1 << levels_to_index)].clone());
+
         self.indexed_count += 1;
     }
 }

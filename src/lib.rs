@@ -30,6 +30,19 @@ mod tests {
         let index_vals = index.vals.iter().map(|x| x.0.unwrap().dur.to_u64()).collect::<Vec<_>>();
         println!("index: {:?}", index_vals);
 
+        // assert!(false);
+    }
+
+    #[test]
+    fn block_count() {
+        let mut pool = BlockPool::new();
+        let mut track = Track::new();
+        track.add_dummy_events(&mut pool, Rng::new(), 325);
+
+        let index = IForestIndex::<BlockCount>::build(&track, &pool);
+        let index_vals = index.vals.iter().map(|x| x.0).collect::<Vec<_>>();
+        println!("index: {:?}", index_vals);
+
         assert!(false);
     }
 }
