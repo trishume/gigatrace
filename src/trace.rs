@@ -106,7 +106,7 @@ impl Track {
         pool.blocks[last as usize].push(ev)
     }
 
-    pub fn add_dummy_events(&mut self, pool: &mut BlockPool, rng: Rng, n: usize) {
+    pub fn add_dummy_events(&mut self, pool: &mut BlockPool, rng: &Rng, n: usize) {
         let mut ts = 0;
         for _ in 0..n {
             ts += rng.u64(..10_000);
