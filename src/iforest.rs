@@ -6,6 +6,11 @@ pub struct IForestIndex<A: Aggregate> {
     pub vals: Vec<A>,
 }
 
+//                #
+// _______________|
+// _______|_______|   #
+// ___|___|___|___|___|
+// 0|1|2|3|4|5|6|7|8|9|
 impl<A: Aggregate> IForestIndex<A> {
     pub fn new() -> Self {
         IForestIndex { vals: vec![] }
@@ -34,7 +39,7 @@ impl<A: Aggregate> IForestIndex<A> {
 
     pub fn range_query(&self, r: Range<usize>) -> A {
         fn left_child_at(node: usize, level: usize) -> bool {
-            (node>>level)&1 == 0
+            (node>>level)&1 == 0 // every even power of two block at each level is on the left
         }
         fn skip(level: usize) -> usize {
             2<<level // lvl 0 skips self and agg node next to it, steps up by powers of 2
@@ -43,12 +48,13 @@ impl<A: Aggregate> IForestIndex<A> {
             node+(1<<level)-1 // lvl 0 is us+0, lvl 1 is us+1, steps by power of 2
         }
 
-        let mut ri = (r.start*2)..(r.end*2);
+        let mut ri = (r.start*2)..(r.end*2); // translate underlying to interior indices
         let len = self.vals.len();
         assert!(ri.start <= len && ri.end <= len, "range {:?} not inside 0..{}", r, len/2);
 
-        let mut combined: A = Default::default();
+        let mut combined = A::empty();
         while ri.start < ri.end {
+            // Skip via the highest level where we're on the very left and it isn't too far
             let mut up_level = 1;
             while left_child_at(ri.start, up_level) && ri.start+skip(up_level)<=ri.end {
                 up_level += 1;
@@ -58,7 +64,6 @@ impl<A: Aggregate> IForestIndex<A> {
             combined = A::combine(&combined, &self.vals[agg_node(ri.start, level)]);
             ri.start += skip(level);
         }
-
         combined
     }
 }

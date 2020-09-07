@@ -1,8 +1,17 @@
 use crate::trace::{TraceBlock, TraceEvent, Track, BlockPool};
 
-pub trait Aggregate: Default + Clone {
-    fn from_block(block: &TraceBlock) -> Self;
+pub trait Aggregate: Clone {
+    fn empty() -> Self;
+    fn from_event(ev: &TraceEvent) -> Self;
     fn combine(&self, other: &Self) -> Self;
+
+    fn from_block(block: &TraceBlock) -> Self {
+        let mut c = Self::empty();
+        for ev in block.events() {
+            c = Self::combine(&c, &Self::from_event(ev));
+        }
+        c
+    }
 }
 
 pub trait TrackIndex<A: Aggregate> {
@@ -14,41 +23,58 @@ pub trait TrackIndex<A: Aggregate> {
 #[derive(Clone)]
 pub struct LongestEvent(pub Option<TraceEvent>);
 
-impl Default for LongestEvent {
-    fn default() -> Self {
+impl Aggregate for LongestEvent {
+    fn empty() -> Self {
         LongestEvent(None)
     }
-}
 
-impl Aggregate for LongestEvent {
-    fn from_block(block: &TraceBlock) -> Self {
-        LongestEvent(block.events().iter().max_by_key(|ev| ev.dur.to_u64()).map(|x| x.clone()))
+    fn from_event(ev: &TraceEvent) -> Self {
+        LongestEvent(Some(ev.clone()))
     }
 
     fn combine(&self, other: &Self) -> Self {
         LongestEvent([self.0, other.0].iter()
             .filter_map(|x| x.as_ref())
-            .max_by_key(|ev| ev.dur.to_u64())
+            .max_by_key(|ev| ev.dur.unpack())
             .map(|x| x.clone()))
+    }
+
+    fn from_block(block: &TraceBlock) -> Self {
+        LongestEvent(block.events().iter().max_by_key(|ev| ev.dur.unpack()).map(|x| x.clone()))
     }
 }
 
 /// For debugging
 #[derive(Clone)]
-pub struct BlockCount(pub usize);
+pub struct EventCount(pub usize);
 
-impl Default for BlockCount {
-    fn default() -> Self {
-        BlockCount(0)
+impl Aggregate for EventCount {
+    fn empty() -> Self {
+        EventCount(0)
     }
-}
 
-impl Aggregate for BlockCount {
-    fn from_block(_block: &TraceBlock) -> Self {
-        BlockCount(1)
+    fn from_event(_ev: &TraceEvent) -> Self {
+        EventCount(1)
     }
 
     fn combine(&self, other: &Self) -> Self {
-        BlockCount(self.0 + other.0)
+        EventCount(self.0 + other.0)
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct TsSum(pub u64);
+
+impl Aggregate for TsSum {
+    fn empty() -> Self {
+        Self(0)
+    }
+
+    fn from_event(ev: &TraceEvent) -> Self {
+        Self(ev.ts.unpack())
+    }
+
+    fn combine(&self, other: &Self) -> Self {
+        Self(self.0 + other.0)
     }
 }
