@@ -31,10 +31,10 @@ pub fn aggregate_by_steps<A: Aggregate>(
             .unwrap_or_else(|i| i);
         if bsearch_res > 1 {
             let skip = bsearch_res - 1;
+            // == aggregate range using the index
             combined = A::combine(&combined, &index.range_query(block_i..(block_i+skip)));
             block_i += skip;
         }
-        // == aggregate range using the index
 
         let block = &pool.blocks[block_locs[block_i] as usize];
         for ev in block.events() {
