@@ -44,6 +44,33 @@ impl Aggregate for LongestEvent {
     }
 }
 
+// #[derive(Clone)]
+// pub struct LongestEventLoc {
+//     dur: Ns,
+//     index: usize,
+// }
+
+// impl Aggregate for LongestEventLoc {
+//     fn empty() -> Self {
+//         LongestEventLoc { dur: 0, index: usize::MAX }
+//     }
+
+//     fn from_event(ev: &TraceEvent) -> Self {
+//         LongestEventLoc(Some(ev.clone()))
+//     }
+
+//     fn combine(&self, other: &Self) -> Self {
+//         LongestEventLoc([self.0, other.0].iter()
+//             .filter_map(|x| x.as_ref())
+//             .max_by_key(|ev| ev.dur.unpack())
+//             .map(|x| x.clone()))
+//     }
+
+//     fn from_block(block: &TraceBlock) -> Self {
+//         LongestEventLoc(block.events().iter().max_by_key(|ev| ev.dur.unpack()).map(|x| x.clone()))
+//     }
+// }
+
 /// For debugging
 #[derive(Clone)]
 pub struct EventCount(pub usize);

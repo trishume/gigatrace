@@ -22,7 +22,7 @@ impl<A: Aggregate> IForestIndex<A> {
         let len = self.vals.len();
         // We want to index the first level every 2 nodes, 2nd level every 4 nodes...
         // This happens to correspond to the number of trailing ones in the index
-        let levels_to_index = (!(len/2)).trailing_zeros();
+        let levels_to_index = len.trailing_ones()-1;
 
         // Complete unfinished aggregation nodes which are now ready
         let mut cur = len-1; // The leaf we just pushed

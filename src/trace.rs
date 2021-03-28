@@ -1,4 +1,5 @@
 use fastrand::Rng;
+use std::ops::Range;
 
 pub type Ns = u64;
 #[derive(Copy, Clone)]
@@ -121,7 +122,7 @@ impl Track {
             ts += rng.u64(..10_000);
             let dur = rng.u64(..20_000);
             self.push(pool, TraceEvent {
-                kind: rng.u16(4..15),
+                kind: rng.u16(4..250),
                 ts: PackedNs::new(ts),
                 dur: PackedNs::new(dur),
             });
@@ -135,5 +136,13 @@ impl Track {
 
     pub fn end_time(&self, pool: &BlockPool) -> Option<Ns> {
         self.block_locs.last().and_then(|i| pool.blocks[*i as usize].events().last()).map(|x| x.ts.unpack())
+    }
+
+    pub fn after_last_time(&self, pool: &BlockPool) -> Option<Ns> {
+        self.block_locs.last().and_then(|i| pool.blocks[*i as usize].events().last()).map(|x| x.ts.unpack() + x.dur.unpack())
+    }
+
+    pub fn events<'a>(&'a self, pool: &'a BlockPool) -> impl Iterator<Item=&'a TraceEvent> + 'a {
+        self.block_locs.iter().flat_map(move |i| pool.blocks[*i as usize].events())
     }
 }

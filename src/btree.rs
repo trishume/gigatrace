@@ -1,3 +1,6 @@
+// I got part-way into implementing this then stopped because it was
+// getting way more complicated than I wanted.
+
 #[derive(Copy, Clone)]
 pub struct Ns([u8; 6]);
 

@@ -2,11 +2,13 @@ pub mod iforest;
 pub mod index;
 pub mod trace;
 
-use iforest::IForestIndex;
-use index::Aggregate;
-use trace::{BlockPool, Ns, BlockIndex};
+use crate::iforest::IForestIndex;
+use crate::index::{Aggregate, LongestEvent, TrackIndex};
+use crate::trace::{BlockPool, Ns, BlockIndex, Track};
 use std::ops::Range;
 use std::mem;
+use fastrand::Rng;
+
 
 pub fn aggregate_by_steps<A: Aggregate>(
     pool: &BlockPool,
@@ -82,6 +84,48 @@ pub fn aggregate_by_steps_unindexed<A: Aggregate>(
         }
     }
     out
+}
+
+pub struct TrackInfo {
+    pub track: Track,
+    pub zoom_index: IForestIndex<LongestEvent>,
+}
+
+pub struct Trace {
+    pub pool: BlockPool,
+    pub tracks: Vec<TrackInfo>,
+}
+
+impl Trace {
+    pub fn new() -> Self {
+        Trace {
+            pool: BlockPool::new(),
+            tracks: vec![],
+        }
+    }
+
+    pub fn demo_trace(tracks: usize, events_per_track: usize) -> Self {
+        let mut trace = Self::new();
+        let rng = Rng::new();
+        for _ in 0..tracks {
+            let mut track = Track::new();
+            track.add_dummy_events(&mut trace.pool, &rng, events_per_track);
+            trace.tracks.push(TrackInfo {
+                zoom_index: IForestIndex::build(&track, &trace.pool),
+                track,
+            });
+        }
+        trace
+    }
+
+    pub fn time_bounds(&self) -> Option<Range<Ns>> {
+        let start = self.tracks.iter().filter_map(|t| t.track.start_time(&self.pool)).min();
+        let end = self.tracks.iter().filter_map(|t| t.track.after_last_time(&self.pool)).max();
+        match (start, end) {
+            (Some(s), Some(e)) => Some(s..e),
+            (_, _) => None
+        }
+    }
 }
 
 #[cfg(test)]
