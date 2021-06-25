@@ -37,15 +37,29 @@ impl<A: Aggregate> IForestIndex<A> {
         self.vals.push(self.vals[len-(1 << levels_to_index)].clone());
     }
 
+    /// See [havelessbemore's explanation] for more on why these bit tricks
+    /// work. Thanks to him for the enhanced bit tricks for fewer branches.
+    ///
+    /// See the [old version] for a potentially easier to understand older
+    /// version of this function that was a bit more complex and probably
+    /// slower.
+    ///
+    /// [havelessbemore's explanation]: https://github.com/havelessbemore/dastal/blob/cd6a1d03872aa437f9272ce3fd42e2e2c006b2cc/src/segmentTree/inOrderSegmentTree.ts
+    /// [old version]: https://github.com/trishume/gigatrace/blob/9e2fbb3c111529335f4f76a86ca788689dafd81c/src/iforest.rs
     pub fn range_query(&self, r: Range<usize>) -> A {
-        fn left_child_at(node: usize, level: usize) -> bool {
-            (node>>level)&1 == 0 // every even power of two block at each level is on the left
+        /// offset past largest tree with left index x
+        fn lsp(x: usize) -> usize {
+            x & x.wrapping_neg() // leave the least significant bit
         }
-        fn skip(level: usize) -> usize {
-            2<<level // lvl 0 skips self and agg node next to it, steps up by powers of 2
+        /// offset past largest tree up to x long
+        fn msp(x: usize) -> usize {
+            1usize.reverse_bits() >> x.leading_zeros() // leave the most significant bit
         }
-        fn agg_node(node: usize, level: usize) -> usize {
-            node+(1<<level)-1 // lvl 0 is us+0, lvl 1 is us+1, steps by power of 2
+        fn largest_prefix_inside_skip(min: usize, max: usize) -> usize {
+            lsp(min|msp(max-min)) // = usize::min(lsp(min),msp(max-min))
+        }
+        fn agg_node(i: usize, offset: usize) -> usize {
+            i + (offset >> 1) - 1 //
         }
 
         let mut ri = (r.start*2)..(r.end*2); // translate underlying to interior indices
@@ -54,15 +68,9 @@ impl<A: Aggregate> IForestIndex<A> {
 
         let mut combined = A::empty();
         while ri.start < ri.end {
-            // Skip via the highest level where we're on the very left and it isn't too far
-            let mut up_level = 1;
-            while left_child_at(ri.start, up_level) && ri.start+skip(up_level)<=ri.end {
-                up_level += 1;
-            }
-
-            let level = up_level - 1;
-            combined = A::combine(&combined, &self.vals[agg_node(ri.start, level)]);
-            ri.start += skip(level);
+            let skip = largest_prefix_inside_skip(ri.start, ri.end);
+            combined = A::combine(&combined, &self.vals[agg_node(ri.start, skip)]);
+            ri.start += skip
         }
         combined
     }
