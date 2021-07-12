@@ -55,6 +55,9 @@ pub fn aggregate_by_steps<A: Aggregate>(
         block_i += 1;
     }
 
+    // TODO add trait bool fn to allow skipping adding empty stuff to lists
+    out.push(combined);
+    
     out
 }
 
@@ -83,6 +86,10 @@ pub fn aggregate_by_steps_unindexed<A: Aggregate>(
             combined = A::combine(&combined, &A::from_event(ev));
         }
     }
+    
+    // TODO add trait bool fn to allow skipping adding empty stuff to lists
+    out.push(combined);
+    
     out
 }
 
